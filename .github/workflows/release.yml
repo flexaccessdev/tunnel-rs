@@ -19,7 +19,7 @@ jobs:
       is_prerelease: ${{ steps.tag.outputs.is_prerelease }}
       minor_version: ${{ steps.version.outputs.minor_version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Extract version from Cargo.toml
         id: version
         run: |
@@ -99,7 +99,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: Swatinem/rust-cache@v2
 
       - name: Build Release
@@ -110,12 +110,12 @@ jobs:
         run: |
           mv target/${{ matrix.target }}/release/tunnel-rs target/release/tunnel-rs-${{ matrix.suffix }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: tunnel-rs-${{ matrix.docker_arch }}
           path: target/release/tunnel-rs-${{ matrix.suffix }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-${{ matrix.suffix }}
           path: target/release/tunnel-rs-${{ matrix.suffix }}
@@ -125,7 +125,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: Swatinem/rust-cache@v2
 
       - name: Build Release
@@ -136,7 +136,7 @@ jobs:
         run: |
           mv target/aarch64-apple-darwin/release/tunnel-rs target/release/tunnel-rs-macos-arm64
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-macos-arm64
           path: target/release/tunnel-rs-macos-arm64
@@ -147,7 +147,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: Swatinem/rust-cache@v2
 
       - name: Build Release
@@ -158,7 +158,7 @@ jobs:
         run: |
           move target\x86_64-pc-windows-msvc\release\tunnel-rs.exe target\release\tunnel-rs-windows-amd64.exe
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-windows-amd64
           path: target/release/tunnel-rs-windows-amd64.exe
@@ -168,7 +168,7 @@ jobs:
     if: always() && needs.setup.result == 'success' && needs.build-linux.result == 'success' && needs.build-macos.result == 'success' && (needs.build-windows.result == 'success' || needs.build-windows.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: release-*
           path: artifacts
@@ -203,8 +203,8 @@ jobs:
     runs-on: ${{ matrix.runner }}
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: tunnel-rs-${{ matrix.arch }}
           path: .
@@ -212,13 +212,13 @@ jobs:
         run: |
           mv tunnel-rs-${{ matrix.suffix }} tunnel-rs
           chmod +x tunnel-rs
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile.build
@@ -234,7 +234,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
