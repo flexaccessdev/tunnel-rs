@@ -1,18 +1,18 @@
 [package]
 name = "tunnel-rs"
-version = "0.6.4"
+version = "0.6.5"
 edition = "2024"
 description = "TCP/UDP port forwarding through iroh P2P connections"
 
 [dependencies]
-iroh = "1.1.0"
+iroh = "1.2.0"
 # Shared iroh transport layer (RelayConfig + per-relay probe, endpoint
 # build, in-place home-relay failover). `mdns` adds local-network discovery to
 # every endpoint (dropped again under --relay-only).
-flexaccess-iroh = { git = "https://github.com/flexaccessdev/flexaccess-iroh", tag = "v0.0.8", features = ["mdns"] }
+flexaccess-iroh = { git = "https://github.com/flexaccessdev/flexaccess-iroh", tag = "v0.0.9", features = ["mdns"] }
 # The congestion-controller configs handed to iroh; must be the noq-proto
 # release iroh itself builds against.
-noq-proto = "1.2.0"
+noq-proto = "1.3.0"
 futures = "0.3"
 bytes = "1"
 rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
