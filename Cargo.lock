@@ -825,8 +825,8 @@ checksum = "1c66915cc5391097de7a2b0b972e8505aa33c0df401fd3a6811dbdb32881ba48"
 
 [[package]]
 name = "flexaccess-iroh"
-version = "0.0.12"
-source = "git+https://github.com/flexaccessdev/flexaccess-iroh?tag=v0.0.12#df8f55b9dd0f717ffdfd98e4d9186abbf6c4038e"
+version = "0.0.13"
+source = "git+https://github.com/flexaccessdev/flexaccess-iroh?tag=v0.0.13#5e7b920dcd6f1c4ccd2c15ef537a2a515a18f7b6"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -1420,9 +1420,9 @@ checksum = "791930b43c0d5973160d90a8f3894509f2b273430f5c5c73b668636d0287c5c0"
 
 [[package]]
 name = "iroh"
-version = "1.4.0"
+version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a11e776f1bf36f140e465133ff4108e46bd37a3d10ecdf5b1ea8dfb3bd35a7d2"
+checksum = "e3689cab508af9bcef7816c1201b403595ec6aa20e7d15e1f9683bb4be4a5b17"
 dependencies = [
  "backon",
  "blake3",
@@ -1470,9 +1470,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-base"
-version = "1.4.0"
+version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b931226024503c916ff5b96f9d376933bc23314f0fecdbf1e03a52d8eacbb70b"
+checksum = "43b72366b16001af3a51574233df88ca6d62da0215807549a769e7de887da803"
 dependencies = [
  "curve25519-dalek",
  "data-encoding",
@@ -1489,9 +1489,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-dns"
-version = "1.4.0"
+version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6993b105283f0350770c06486c27b9283cdc5dc2846e49641cc57dd5dfb0b718"
+checksum = "7481d0792dde1035a2b06ec06ed3cf6d01fcb1a494e6931b489e32073382048d"
 dependencies = [
  "arc-swap",
  "cfg_aliases",
@@ -1559,9 +1559,9 @@ dependencies = [
 
 [[package]]
 name = "iroh-relay"
-version = "1.4.0"
+version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99f1da3af46c3bca658076e47fea877f38108dae664507a1fb35d276314363c8"
+checksum = "7e5589e7c1475700686603a970275687f760df853bc6525c7eb1347aa31d7230"
 dependencies = [
  "blake3",
  "bytes",
@@ -3610,7 +3610,7 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
 name = "tunnel-rs"
-version = "0.6.8"
+version = "0.6.9"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
