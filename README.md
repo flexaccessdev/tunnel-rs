@@ -712,3 +712,7 @@ relays is reachable, each unreachable one being a warning.
 The one tunnel-rs-specific knob is `--relay-only`, which forces every byte
 through the relays instead of attempting direct paths. It is **CLI-only** and not
 accepted in config files, to avoid accidental activation.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
