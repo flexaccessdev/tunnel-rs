@@ -47,7 +47,7 @@ tunnel-rs uses iroh for establishing tunnels, providing NAT traversal with relay
 ```
 
 1. **Transport:** Client and server find each other and connect over iroh — see
-   [relays and address lookup](https://github.com/flexaccessdev/iroh-common-architecture/blob/main/relays-and-address-lookup.md)
+   [relays and address lookup](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/relays-and-address-lookup.md)
    for discovery, relays, and NAT traversal
 2. **QUIC handshake:** Connection uses the fixed ALPN `mf/4` shared by all peers
 3. **Authentication phase:** Client opens the dedicated auth stream; the server sends a fresh random challenge
@@ -690,19 +690,19 @@ either.
 
 For custom relay servers and fully independent operation without public
 infrastructure, see
-**[iroh-common-architecture](https://github.com/flexaccessdev/iroh-common-architecture)** —
+**[flexaccess-iroh docs](https://github.com/flexaccessdev/flexaccess-iroh/tree/main/docs)** —
 the iroh transport docs shared with
 [ezvpn](https://github.com/flexaccessdev/ezvpn) and
 [flextunnel](https://github.com/flexaccessdev/flextunnel):
-[self-hosting](https://github.com/flexaccessdev/iroh-common-architecture/blob/main/self-hosting.md)
+[self-hosting](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/self-hosting.md)
 (running your own relay, including the single-port Cloudflare Tunnel setup) and
-[relays and address lookup](https://github.com/flexaccessdev/iroh-common-architecture/blob/main/relays-and-address-lookup.md)
+[relays and address lookup](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/relays-and-address-lookup.md)
 (the design). tunnel-rs is the **reference program for relay-only setups** — use
 its relay-only e2e script to validate a freshly deployed relay.
 
 Three behaviors are worth reading up on before configuring relays, all covered in
-[relays and address lookup](https://github.com/flexaccessdev/iroh-common-architecture/blob/main/relays-and-address-lookup.md)
-and [relay failover](https://github.com/flexaccessdev/iroh-common-architecture/blob/main/relay-failover.md):
+[relays and address lookup](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/relays-and-address-lookup.md)
+and [relay failover](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/relay-failover.md):
 custom relays disable internet discovery (configure **both** sides with the full
 relay list); at least two custom relays are required, because a server rides out
 a relay outage by moving onto another configured relay, in place, without

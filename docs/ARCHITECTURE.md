@@ -104,7 +104,7 @@ Provided entirely by iroh and shared with ezvpn and flextunnel: which NAT types
 reach a direct path, why symmetric NAT usually stays on the relay, why container
 networking depends on the CNI rather than on Kubernetes itself, and what that
 means for relay bandwidth. See
-[NAT traversal and the QUIC transport](https://github.com/flexaccessdev/iroh-common-architecture/blob/main/nat-traversal-and-transport.md).
+[NAT traversal and the QUIC transport](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/nat-traversal-and-transport.md).
 
 ---
 
@@ -286,7 +286,7 @@ graph TB
 
 The relay/discovery design is shared with ezvpn and flextunnel and is documented
 once in
-[iroh-common-architecture / relays-and-address-lookup.md](https://github.com/flexaccessdev/iroh-common-architecture/blob/main/relays-and-address-lookup.md).
+[flexaccess-iroh / docs/relays-and-address-lookup.md](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/relays-and-address-lookup.md).
 In short: `RelayConfig` (from the shared
 [flexaccess-iroh](https://github.com/flexaccessdev/flexaccess-iroh) crate, which
 is that design as code) resolves the raw config once into `Default` or `Custom`,
@@ -311,7 +311,7 @@ identity, its direct paths and its established connections are untouched; only
 a connection whose sole path ran through the dead relay times out, and that
 client redials. The removed relay is probed every 90 s and put back once it is
 connectable again. See
-[relay-failover.md](https://github.com/flexaccessdev/iroh-common-architecture/blob/main/relay-failover.md).
+[relay-failover.md](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/relay-failover.md).
 
 ```mermaid
 graph TB
@@ -490,7 +490,7 @@ graph TB
 All traffic is end-to-end encrypted by QUIC/TLS 1.3 between the two endpoints;
 relay operators forward ciphertext and see only connection metadata. The stack is
 iroh's and identical across tunnel-rs, ezvpn, and flextunnel — see
-[NAT traversal and the QUIC transport](https://github.com/flexaccessdev/iroh-common-architecture/blob/main/nat-traversal-and-transport.md#encryption-stack).
+[NAT traversal and the QUIC transport](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/nat-traversal-and-transport.md#encryption-stack).
 
 ALPN is split between the two layers. The *mechanism* — carrying the protocol
 identifier in the TLS 1.3 handshake and failing the connection when the two sides
@@ -781,9 +781,9 @@ graph LR
 transport, and Ed25519 endpoint identity. tunnel-rs configures it in
 `src/iroh_mode/endpoint.rs` and adds nothing to the transport itself. For what
 the endpoint does and how it behaves, see
-[NAT traversal and the QUIC transport](https://github.com/flexaccessdev/iroh-common-architecture/blob/main/nat-traversal-and-transport.md)
+[NAT traversal and the QUIC transport](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/nat-traversal-and-transport.md)
 and
-[relays and address lookup](https://github.com/flexaccessdev/iroh-common-architecture/blob/main/relays-and-address-lookup.md).
+[relays and address lookup](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/relays-and-address-lookup.md).
 
 ---
 
@@ -793,7 +793,7 @@ and
 
 Establishment timings (discovery, hole punching, relay fallback) are iroh's and
 shared across the three programs — see
-[performance characteristics](https://github.com/flexaccessdev/iroh-common-architecture/blob/main/nat-traversal-and-transport.md#performance-characteristics).
+[performance characteristics](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/nat-traversal-and-transport.md#performance-characteristics).
 
 ### Throughput Characteristics
 
@@ -803,14 +803,14 @@ Specific to tunnel-rs's tunneling layer:
 - **UDP Tunneling**: Additional framing overhead (2 bytes per packet)
 
 Direct-vs-relay path performance is a property of the iroh transport — see
-[performance characteristics](https://github.com/flexaccessdev/iroh-common-architecture/blob/main/nat-traversal-and-transport.md#performance-characteristics).
+[performance characteristics](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/nat-traversal-and-transport.md#performance-characteristics).
 
 ---
 
 ## Error Handling
 
 Connection establishment and its relay fallback are handled by iroh (see
-[NAT traversal and the QUIC transport](https://github.com/flexaccessdev/iroh-common-architecture/blob/main/nat-traversal-and-transport.md)).
+[NAT traversal and the QUIC transport](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/nat-traversal-and-transport.md)).
 What follows is how tunnel-rs surfaces the outcome.
 
 ### Exit Codes (Client Mode)
@@ -855,11 +855,11 @@ Retry guidance:
 
 ## References
 
-- [iroh-common-architecture](https://github.com/flexaccessdev/iroh-common-architecture) —
+- [flexaccess-iroh docs](https://github.com/flexaccessdev/flexaccess-iroh/tree/main/docs) —
   shared iroh transport design for tunnel-rs, ezvpn, and flextunnel: [NAT
-  traversal and the QUIC transport](https://github.com/flexaccessdev/iroh-common-architecture/blob/main/nat-traversal-and-transport.md),
-  [relays and address lookup](https://github.com/flexaccessdev/iroh-common-architecture/blob/main/relays-and-address-lookup.md),
-  [relay self-hosting](https://github.com/flexaccessdev/iroh-common-architecture/blob/main/self-hosting.md),
+  traversal and the QUIC transport](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/nat-traversal-and-transport.md),
+  [relays and address lookup](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/relays-and-address-lookup.md),
+  [relay self-hosting](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/self-hosting.md),
   the discovery findings, and the relay connection trace
 - [iroh Documentation](https://iroh.computer/)
 - [RFC 9000 - QUIC](https://datatracker.ietf.org/doc/html/rfc9000)

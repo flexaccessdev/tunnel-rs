@@ -13,7 +13,7 @@ identity key (generate-server-key, src/secret.rs), which stays in tunnel-rs.
 
 The iroh transport layer shared with ezvpn and flextunnel — relays and address
 lookup, the per-relay startup probe, relay auth tokens, relay self-hosting — is
-documented once in https://github.com/flexaccessdev/iroh-common-architecture. Do
+documented once in https://github.com/flexaccessdev/flexaccess-iroh/tree/main/docs. Do
 not duplicate it in this repo; update it there and link to it. tunnel-rs is the
 reference program for relay-only setups, so relay-only behavior changes should be
 reflected there too.
