@@ -200,7 +200,7 @@ The deployment sets `hostNetwork: true` with
   without `hostNetwork`. Whether the overlay was the obstacle in the first place
   depends on your CNI and kube-proxy mode, not on Kubernetes as such — some
   clusters hole-punch from inside a normal pod just fine. See
-  [Kubernetes and container networking](https://github.com/flexaccessdev/iroh-common-architecture/blob/main/nat-traversal-and-transport.md#kubernetes-and-container-networking)
+  [Kubernetes and container networking](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/nat-traversal-and-transport.md#kubernetes-and-container-networking)
   before assuming you need this.
 - **`dnsPolicy: ClusterFirstWithHostNet`** is required to keep resolving cluster
   DNS names such as `service.namespace.svc.cluster.local`. Without it a
@@ -221,5 +221,5 @@ drop both fields from the deployment. The pod then runs on the cluster's normal
 pod networking, where hole punching may or may not succeed depending on the CNI;
 if it doesn't, connections fall back to a relay. That works, but every byte takes
 an extra hop, so consider a
-[self-hosted relay](https://github.com/flexaccessdev/iroh-common-architecture/blob/main/self-hosting.md)
+[self-hosted relay](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/self-hosting.md)
 near the cluster to keep the latency cost down.

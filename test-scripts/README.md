@@ -103,8 +103,8 @@ iroh-relay --dev -c test-scripts/relay-dev-2.toml
 
 Install the relay with `cargo install iroh-relay --features server` if you
 don't have it. See
-[self-hosting.md](https://github.com/flexaccessdev/iroh-common-architecture/blob/main/self-hosting.md)
-in iroh-common-architecture for relay ports and config details, including a
+[self-hosting.md](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/self-hosting.md)
+in flexaccess-iroh's docs for relay ports and config details, including a
 production Cloudflare Tunnel setup that serves the relay over a single TCP port
 (`relay-prod.toml.example` in this repo is the matching template).
 
