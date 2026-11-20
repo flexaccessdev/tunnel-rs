@@ -42,13 +42,15 @@ enable_metrics = false
 # With no `access` section the relay allows everyone (same as the dev config).
 # Because the tunnel URL is public, consider restricting who may relay:
 #
-#   # Only clients presenting one of these bearer tokens (or ?token=... / the
-#   # IROH_RELAY_ACCESS_TOKEN env var) may use the relay:
+#   # Only clients presenting one of these bearer tokens may use the relay
+#   # (the IROH_RELAY_ACCESS_TOKEN env var, when set, replaces this list):
 #   access.shared_token = ["change-me-to-a-long-random-secret"]
 #
 #   # ...or restrict to specific endpoint ids:
 #   # access.allowlist = ["<endpoint-id-hex>", "..."]
 #
-# If you set a shared_token, the tunnel-rs clients must be pointed at a relay
-# URL that carries the token as a query parameter, e.g.
-#   --relay-url https://relay.example.com/?token=change-me-to-a-long-random-secret
+# If you set a shared_token, give tunnel-rs the same token on both the server
+# and the client: TUNNEL_RS_RELAY_AUTH_TOKEN (preferred, it stays out of the
+# process list), `relay_auth_token` in the config, or --relay-auth-token.
+# Do not put it on the relay URL as `?token=...`: iroh drops a relay URL's
+# query when it dials, so the relay would never see the token.
