@@ -784,8 +784,8 @@ checksum = "5905ec755cc8386d7928353e4d356d2be3e89e81e5ca01fe630a1ca4d08dc175"
 
 [[package]]
 name = "flexaccess-iroh"
-version = "0.0.15"
-source = "git+https://github.com/flexaccessdev/flexaccess-iroh?tag=v0.0.15#f045159b9f8836e12a0f26d7454122f5ec0521ab"
+version = "0.0.16"
+source = "git+https://github.com/flexaccessdev/flexaccess-iroh?tag=v0.0.16#3ac94ac85fcfc449c591a57b6405a38c484d2b3a"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
