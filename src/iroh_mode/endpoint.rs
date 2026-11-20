@@ -142,7 +142,6 @@ fn build_quic_transport_config(tuning: &TransportTuning) -> Result<QuicTransport
         .context("converting QUIC_IDLE_TIMEOUT to IdleTimeout")?;
     transport_config = transport_config.max_idle_timeout(Some(idle_timeout));
     transport_config = transport_config.keep_alive_interval(QUIC_KEEP_ALIVE_INTERVAL);
-    transport_config = transport_config.send_fairness(send_fairness_enabled());
 
     {
         // Set congestion controller
@@ -274,25 +273,6 @@ pub async fn create_client_endpoint(
             .await
             .map_err(TunnelError::connection)?;
     Ok(endpoint)
-}
-
-/// QUIC send fairness across streams.
-///
-/// EXPERIMENTAL (tuning2): `send_fairness(false)` lets one stream drain before
-/// servicing others (good for bulk single-stream, but burstier). Overridable
-/// via `TUNNEL_SEND_FAIRNESS` (`1`/`true`) to restore quinn's default fair
-/// scheduling for bisection. Defaults to `false` (tuning behavior).
-fn send_fairness_enabled() -> bool {
-    use std::sync::OnceLock;
-    static FAIRNESS: OnceLock<bool> = OnceLock::new();
-    *FAIRNESS.get_or_init(|| {
-        let enabled = std::env::var("TUNNEL_SEND_FAIRNESS")
-            .ok()
-            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-            .unwrap_or(false);
-        info!("QUIC send_fairness = {}", enabled);
-        enabled
-    })
 }
 
 /// Connect to a server endpoint with relay failover support.
