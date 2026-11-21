@@ -8,7 +8,9 @@
 use anyhow::{Context, Result};
 use crate::error::TunnelError;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
-use flexaccess_iroh::endpoint::{create_endpoint, endpoint_builder, CreatedEndpoint, EndpointOptions};
+use flexaccess_iroh::endpoint::{
+    create_endpoint, endpoint_builder, CreatedEndpoint, EndpointOptions, PendingCloses,
+};
 use futures::StreamExt;
 use iroh::{
     endpoint::{AckFrequencyConfig, Builder as EndpointBuilder, PathList, QuicTransportConfig},
@@ -252,7 +254,10 @@ pub async fn create_server_endpoint(
     tuning: &TransportTuning,
 ) -> Result<CreatedEndpoint> {
     log_relay_only(relay_only);
-    create_endpoint(relay_config, server_builder(relay_config, relay_only, secret, tuning)?)
+    // The endpoint lives on the process's runtime: a close its creation stops
+    // waiting for finishes there by itself.
+    let closes = PendingCloses::new();
+    create_endpoint(relay_config, server_builder(relay_config, relay_only, secret, tuning)?, &closes)
         .await
         .map_err(|e| TunnelError::connection(e).into())
 }
@@ -268,8 +273,11 @@ pub async fn create_client_endpoint(
     tuning: &TransportTuning,
 ) -> Result<Endpoint> {
     log_relay_only(relay_only);
+    // The endpoint lives on the process's runtime: a close its creation stops
+    // waiting for finishes there by itself.
+    let closes = PendingCloses::new();
     let CreatedEndpoint { endpoint, .. } =
-        create_endpoint(relay_config, base_builder(relay_config, relay_only, false, tuning)?)
+        create_endpoint(relay_config, base_builder(relay_config, relay_only, false, tuning)?, &closes)
             .await
             .map_err(TunnelError::connection)?;
     Ok(endpoint)
