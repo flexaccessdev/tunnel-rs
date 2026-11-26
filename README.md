@@ -333,7 +333,7 @@ secret_file = "./server.key"
 | `--authorized-keys-file` | required | Path to SSH-like file containing authorized Ed25519 public keys. Required unless the keys come from `[iroh].authorized_keys_file` or, with `--config-stdin`, an inline `[iroh].authorized_keys` |
 | `--max-sessions` | 100 | Maximum concurrent sessions |
 | `--secret-file` | - | Path to secret key file for persistent server identity |
-| `--relay-url` | public | Custom relay server URLs, repeatable, at least two. Startup fails only if none is reachable; the server fails over between them at runtime |
+| `--relay-url` | public | Custom relay server URLs, repeatable: one or more unique URLs (a repeated one is ignored). One works (reduced-redundancy mode, no failover); with two or more the server fails over at runtime onto one that still works. Startup fails if no relay is reachable, or if the endpoint does not come online in time (see the [startup probe policy](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/relays-and-address-lookup.md#custom-relay-validation-the-per-relay-startup-probe)) |
 | `--relay-auth-token` | - | Shared bearer token for the custom relays; requires `--relay-url` |
 | `--relay-only` | false | Force all traffic through the relays (CLI-only; not supported in config files) |
 
@@ -356,7 +356,7 @@ secret_file = "./server.key"
 | `--source`, `-s` | required | Source address to request from server (tcp://host:port or udp://host:port) |
 | `--target`, `-t` | required | Local address to listen on |
 | `--private-key-file` | required | Path to compact Ed25519 authentication private key. Required unless the key comes from `[iroh].private_key_file` or, with `--config-stdin`, an inline `[iroh].private_key` |
-| `--relay-url` | public | Custom relay server URLs, repeatable, at least two; must match the server's list. Startup fails only if none is reachable |
+| `--relay-url` | public | Custom relay server URLs, repeatable; must match the server's list. Startup fails if no relay is reachable, or if the endpoint does not come online in time (see the [startup probe policy](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/relays-and-address-lookup.md#custom-relay-validation-the-per-relay-startup-probe)) |
 | `--relay-auth-token` | - | Shared bearer token for the custom relays; requires `--relay-url` |
 | `--relay-only` | false | Force all traffic through the relays (CLI-only; not supported in config files) |
 
@@ -704,10 +704,17 @@ Three behaviors are worth reading up on before configuring relays, all covered i
 [relays and address lookup](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/relays-and-address-lookup.md)
 and [relay failover](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/relay-failover.md):
 custom relays disable internet discovery (configure **both** sides with the full
-relay list); at least two custom relays are required, because a server rides out
-a relay outage by moving onto another configured relay, in place, without
-dropping its connections; and startup fails only when none of the configured
-relays is reachable, each unreachable one being a warning.
+relay list); one custom relay works, but only two or more unique ones let a
+server ride out a relay outage, by moving in place onto
+another configured relay that still works, keeping its
+identity and its connections on direct paths (a connection whose only path ran
+through the failed relay times out, and that client exits with code 11, to be
+restarted by a supervisor or a [retry wrapper](#exit-codes-client-mode); a
+single relay is reduced-redundancy mode, with a startup warning and nothing to
+fail over to); and each unreachable relay is a warning, while startup fails when
+none is reachable, or when the endpoint does not come online in time even though
+some relay answered its probe (the exact rules are in the
+[startup probe policy](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/relays-and-address-lookup.md#custom-relay-validation-the-per-relay-startup-probe)).
 
 The one tunnel-rs-specific knob is `--relay-only`, which forces every byte
 through the relays instead of attempting direct paths. It is **CLI-only** and not

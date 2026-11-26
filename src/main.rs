@@ -74,8 +74,9 @@ enum Command {
         #[arg(long)]
         secret_file: Option<PathBuf>,
 
-        /// Custom relay server URLs (at least two, for failover); the server
-        /// moves onto another one when its home relay is lost
+        /// Custom relay server URLs (give two or more unique ones for
+        /// failover: the server moves onto another that still works when its
+        /// home relay is lost; a single relay runs without failover)
         #[arg(long = "relay-url")]
         relay_urls: Vec<String>,
 
@@ -120,8 +121,8 @@ enum Command {
         #[arg(short, long)]
         target: Option<String>,
 
-        /// Custom relay server URLs (at least two; must match the server's
-        /// list, since the server may be homed on any of them)
+        /// Custom relay server URLs (must match the server's list, since the
+        /// server may be homed on any of them)
         #[arg(long = "relay-url")]
         relay_urls: Vec<String>,
 
