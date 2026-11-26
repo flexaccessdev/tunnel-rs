@@ -43,6 +43,12 @@ pub struct IrohConfig {
     /// `relay_urls`; setting it without custom relays is rejected, since the
     /// default iroh relays never take a token.
     pub relay_auth_token: Option<String>,
+    /// Whether the custom relays serve QUIC address discovery, all of them or
+    /// none (default: true, as in iroh). Set false for relays behind a
+    /// Cloudflare Tunnel or another HTTP-only front: left on, iroh probes them
+    /// for it and each start can wait out its 3 s probe timeout. Requires
+    /// `relay_urls`.
+    pub relay_quic_addr_discovery: Option<bool>,
     /// NodeId of the server to connect to (client only)
     pub server_node_id: Option<String>,
     /// Allowed source networks in CIDR notation (server only).

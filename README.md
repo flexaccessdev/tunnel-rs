@@ -335,6 +335,7 @@ secret_file = "./server.key"
 | `--secret-file` | - | Path to secret key file for persistent server identity |
 | `--relay-url` | public | Custom relay server URLs, repeatable: one or more unique URLs (a repeated one is ignored). One works (reduced-redundancy mode, no failover); with two or more the server fails over at runtime onto one that still works. Startup fails if no relay is reachable, or if the endpoint does not come online in time (see the [startup probe policy](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/relays-and-address-lookup.md#custom-relay-validation-the-per-relay-startup-probe)) |
 | `--relay-auth-token` | - | Shared bearer token for the custom relays; requires `--relay-url` |
+| `--relay-quic-addr-discovery` | true | Whether the custom relays serve QUIC address discovery, all or none; requires `--relay-url`. Set `false` for relays behind a Cloudflare Tunnel or another HTTP-only front, which otherwise delay startup by up to 3 s (see [QUIC address discovery on custom relays](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/relays-and-address-lookup.md#quic-address-discovery-on-custom-relays)) |
 | `--relay-only` | false | Force all traffic through the relays (CLI-only; not supported in config files) |
 
 **Environment variables** (for containers and automation scripts):
@@ -358,6 +359,7 @@ secret_file = "./server.key"
 | `--private-key-file` | required | Path to compact Ed25519 authentication private key. Required unless the key comes from `[iroh].private_key_file` or, with `--config-stdin`, an inline `[iroh].private_key` |
 | `--relay-url` | public | Custom relay server URLs, repeatable; must match the server's list. Startup fails if no relay is reachable, or if the endpoint does not come online in time (see the [startup probe policy](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/relays-and-address-lookup.md#custom-relay-validation-the-per-relay-startup-probe)) |
 | `--relay-auth-token` | - | Shared bearer token for the custom relays; requires `--relay-url` |
+| `--relay-quic-addr-discovery` | true | Whether the custom relays serve QUIC address discovery, all or none; requires `--relay-url`. Set `false` for relays behind a Cloudflare Tunnel or another HTTP-only front, which otherwise delay startup by up to 3 s (see [QUIC address discovery on custom relays](https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/relays-and-address-lookup.md#quic-address-discovery-on-custom-relays)) |
 | `--relay-only` | false | Force all traffic through the relays (CLI-only; not supported in config files) |
 
 **Environment variables** (for containers and automation scripts):
