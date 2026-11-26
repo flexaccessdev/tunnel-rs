@@ -784,8 +784,8 @@ checksum = "5905ec755cc8386d7928353e4d356d2be3e89e81e5ca01fe630a1ca4d08dc175"
 
 [[package]]
 name = "flexaccess-iroh"
-version = "0.0.27"
-source = "git+https://github.com/flexaccessdev/flexaccess-iroh?tag=v0.0.27#7fe53a5a5163fe488e28240872a1efbaa8124d5f"
+version = "0.0.28"
+source = "git+https://github.com/flexaccessdev/flexaccess-iroh?tag=v0.0.28#a6d1d70aa7d39fa972c86c9e1590ef911def2ea7"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -3472,7 +3472,7 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
 name = "tunnel-rs"
-version = "0.6.16"
+version = "0.6.17"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
