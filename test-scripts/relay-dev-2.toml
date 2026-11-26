@@ -1,5 +1,5 @@
-# Second local dev relay, the pair of `relay-dev.toml` (see there): a custom
-# relay set is at least two relays, so offline relay-only runs need both.
+# Second local dev relay, the pair of `relay-dev.toml` (see there): a single
+# custom relay runs without failover, so the redundant setup needs both.
 #
 #   iroh-relay --dev -c test-scripts/relay-dev-2.toml
 #

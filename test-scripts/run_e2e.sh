@@ -29,7 +29,7 @@
 #                   authentication keys (default: PATH, then a download of the
 #                   pinned release)
 #   RELAY_URL       custom relay URLs for both sides, whitespace-separated
-#                   (at least two: tunnel-rs rejects a single custom relay).
+#                   (one alone runs in reduced-redundancy mode, no failover).
 #                   Custom relays disable internet discovery automatically
 #                   (the binary handles it), so custom-relay runs need no
 #                   public iroh infrastructure. When unset, the default public
@@ -60,9 +60,9 @@ With no options it runs the default test: the public iroh relay plus the
 default iroh discovery server (requires internet access), no relay override.
 
 Options:
-  --relay-url URL   Custom relay URL for both sides (repeatable; give at least
-                    two, a single custom relay is rejected). Custom relays
-                    disable internet discovery automatically.
+  --relay-url URL   Custom relay URL for both sides (repeatable; one alone
+                    runs in reduced-redundancy mode, with no failover).
+                    Custom relays disable internet discovery automatically.
                     May also be given as --relay-url=URL.
   --relay-only      Force all traffic through the relays, disabling direct P2P.
                     Requires --relay-url.
@@ -104,10 +104,6 @@ if [[ ${#RELAY_URLS[@]} -eq 0 && -n "${RELAY_URL:-}" ]]; then
     read -r -a RELAY_URLS <<<"$RELAY_URL"
 fi
 
-if [[ ${#RELAY_URLS[@]} -eq 1 ]]; then
-    echo "ERROR: custom relays need at least two --relay-url values (tunnel-rs rejects one)" >&2
-    exit 2
-fi
 if [[ "$RELAY_ONLY" == "1" && ${#RELAY_URLS[@]} -eq 0 ]]; then
     echo "ERROR: --relay-only requires --relay-url" >&2
     exit 2

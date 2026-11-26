@@ -164,7 +164,7 @@ pub async fn run_multi_source_server(config: MultiSourceServerConfig) -> Result<
     log::info!("==================================");
     log::info!("Creating iroh endpoint...");
 
-    let CreatedEndpoint { endpoint, relays_left_out } = create_server_endpoint(
+    let CreatedEndpoint { endpoint, relays } = create_server_endpoint(
         &config.relay_config,
         relay_only,
         config.secret,
@@ -210,7 +210,7 @@ pub async fn run_multi_source_server(config: MultiSourceServerConfig) -> Result<
     // the default relays the failover future is pending forever.
     tokio::select! {
         () = accept_loop(&endpoint, &mut connection_tasks, &serve) => {}
-        () = fail_over_home_relay(&endpoint, &config.relay_config, &relays_left_out) => {}
+        () = fail_over_home_relay(&endpoint, &config.relay_config, &relays) => {}
     }
 
     // Wait for remaining tasks to complete

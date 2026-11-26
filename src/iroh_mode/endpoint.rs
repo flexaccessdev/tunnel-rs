@@ -114,11 +114,11 @@ pub fn secret_to_endpoint_id(secret: &SecretKey) -> EndpointId {
 /// Validate that relay-only mode is used correctly.
 ///
 /// Relay-only is meaningless against the rate-limited default relays, so it
-/// requires a custom relay set (which is at least two relays).
+/// requires custom relays.
 pub fn validate_relay_only(relay_only: bool, relay_config: &RelayConfig) -> Result<()> {
     if relay_only && !relay_config.is_custom() {
         anyhow::bail!(
-            "--relay-only requires custom relays (--relay-url, at least two).\n\
+            "--relay-only requires custom relays (--relay-url).\n\
             The default public relay is rate-limited and cannot be used for relay-only mode."
         );
     }
@@ -242,11 +242,13 @@ fn server_builder(
 /// With the default relays internet discovery is on, so the server publishes
 /// its current home relay and clients resolve it by endpoint ID. With custom
 /// relays discovery is off, so clients reach the server through the relay
-/// hints they attach to its `EndpointAddr` (see [`connect_to_server`]). Every
-/// custom relay is probed (startup fails only if none answers), the endpoint
-/// is bound without the relays that failed and must come online, both
-/// reported as [`TunnelError::connection`]. The relays left out come back in
-/// [`CreatedEndpoint::relays_left_out`] for the home-relay failover to restore.
+/// hints they attach to its `EndpointAddr` (see [`connect_to_server`]). The
+/// endpoint binds with every custom relay and must come online, while each
+/// relay is probed beside it and taken out of the relay map if it fails;
+/// startup fails only if none answers, reported as
+/// [`TunnelError::connection`]. The startup probe comes back in
+/// [`CreatedEndpoint::relays`] for the home-relay failover, which puts the
+/// relays it left out back once they are connectable.
 pub async fn create_server_endpoint(
     relay_config: &RelayConfig,
     relay_only: bool,
@@ -489,6 +491,8 @@ mod tests {
         );
         let custom = RelayConfig::from_urls(&[RELAY.to_string(), RELAY2.to_string()]).unwrap();
         assert!(validate_relay_only(true, &custom).is_ok());
+        let single = RelayConfig::from_urls(&[RELAY.to_string()]).unwrap();
+        assert!(validate_relay_only(true, &single).is_ok());
         assert!(validate_relay_only(false, &RelayConfig::Default).is_ok());
     }
 }
