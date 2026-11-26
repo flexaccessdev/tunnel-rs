@@ -279,7 +279,7 @@ pub(super) async fn forward_stream_to_udp_server(
         let mut len_buf = [0u8; 2];
         match recv_stream.read_exact(&mut len_buf).await {
             Ok(()) => {}
-            Err(iroh::endpoint::ReadExactError::FinishedEarly(_)) => {
+            Err(iroh::endpoint::ReadExactError::FinishedEarly(0)) => {
                 // Clean EOF - stream finished at frame boundary
                 break;
             }
@@ -363,14 +363,11 @@ pub(super) async fn forward_stream_to_udp_client(
         let mut len_buf = [0u8; 2];
         match recv_stream.read_exact(&mut len_buf).await {
             Ok(()) => {}
-            Err(iroh::endpoint::ReadExactError::FinishedEarly(_)) => {
+            Err(iroh::endpoint::ReadExactError::FinishedEarly(0)) => {
                 // Clean EOF - stream finished at frame boundary
                 break;
             }
-            Err(e) => {
-                log::warn!("Failed to read frame length: {}", e);
-                break;
-            }
+            Err(e) => return Err(e).context("Failed to read frame length"),
         }
         let len = u16::from_be_bytes(len_buf) as usize;
 

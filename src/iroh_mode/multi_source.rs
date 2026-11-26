@@ -95,7 +95,7 @@ use crate::iroh_mode::endpoint::{
     RelayConfig, TUNNEL_ALPN, connect_to_server, create_client_endpoint, create_server_endpoint,
     validate_relay_only, watch_connection_paths,
 };
-use flexaccess_iroh::endpoint::CreatedEndpoint;
+use flexaccess_iroh::endpoint::{close_endpoint, CreatedEndpoint, PendingCloses};
 use flexaccess_iroh::relay_failover::fail_over_home_relay;
 use iroh::Endpoint;
 use crate::iroh_mode::helpers::{
@@ -203,8 +203,9 @@ pub async fn run_multi_source_server(config: MultiSourceServerConfig) -> Result<
     // server is reachable from off the LAN only through its home relay (n0
     // discovery is off, clients dial by relay hint), and if that relay is
     // lost for a minute without iroh re-homing on its own, the failover moves
-    // the endpoint onto another configured relay in place. Nothing is torn
-    // down: the identity, direct paths and established connections all stay.
+    // the endpoint onto another configured relay in place. The identity and
+    // direct paths stay; a connection whose only path ran through the lost
+    // relay times out, and that client exits as connection lost.
     // Relays the startup probe could not connect (the endpoint was bound
     // without them) are put back by the same failover once they are. With
     // the default relays the failover future is pending forever.
@@ -639,38 +640,49 @@ pub async fn run_multi_source_client(config: MultiSourceClientConfig) -> Result<
     let endpoint =
         create_client_endpoint(&config.relay_config, relay_only, &config.transport).await?;
 
-    let conn = connect_to_server(
-        &endpoint,
-        server_id,
-        &config.relay_config,
-        relay_only,
-        TUNNEL_ALPN,
-    )
-    .await?;
+    // Whatever ends the session, the endpoint is closed before it is dropped:
+    // iroh aborts an endpoint dropped without `close()`, without telling the
+    // server. The close is bounded, so a failure on a stalled path still
+    // reaches the exit status promptly.
+    let result = async {
+        let conn = connect_to_server(
+            &endpoint,
+            server_id,
+            &config.relay_config,
+            relay_only,
+            TUNNEL_ALPN,
+        )
+        .await?;
 
-    log::info!("Connected to server!");
-    let _path_watcher = watch_connection_paths(&conn);
+        log::info!("Connected to server!");
+        let _path_watcher = watch_connection_paths(&conn);
 
-    // Authenticate immediately after connection
-    authenticate_connection(&conn, &config.private_key).await?;
+        // Authenticate immediately after connection
+        authenticate_connection(&conn, &config.private_key).await?;
 
-    let conn = Arc::new(conn);
-    let tunnel_established = Arc::new(AtomicBool::new(false));
+        let conn = Arc::new(conn);
+        let tunnel_established = Arc::new(AtomicBool::new(false));
 
-    if is_tcp {
-        run_multi_source_tcp_client(conn, config.source, &listen_addrs, tunnel_established).await?;
-    } else {
-        // UDP still uses single address (first one) - multi-listener for UDP is more complex
-        let listen_addr = listen_addrs
-            .first()
-            .ok_or_else(|| anyhow::anyhow!("No listen addresses resolved for target"))?;
-        run_multi_source_udp_client(conn, config.source, *listen_addr).await?;
+        if is_tcp {
+            run_multi_source_tcp_client(conn, config.source, &listen_addrs, tunnel_established)
+                .await
+        } else {
+            // UDP still uses single address (first one) - multi-listener for UDP is more complex
+            let listen_addr = listen_addrs
+                .first()
+                .ok_or_else(|| anyhow::anyhow!("No listen addresses resolved for target"))?;
+            run_multi_source_udp_client(conn, config.source, *listen_addr).await
+        }
     }
+    .await;
 
-    endpoint.close().await;
-    log::info!("Multi-source client stopped.");
-
-    Ok(())
+    // The process exits right after, so a close that outlives the bound is
+    // left to be cut short.
+    close_endpoint(endpoint, &PendingCloses::new()).await;
+    if result.is_ok() {
+        log::info!("Multi-source client stopped.");
+    }
+    result
 }
 
 /// Run TCP client for multi-source mode.
@@ -867,27 +879,25 @@ async fn run_multi_source_udp_client(
     let udp_clone = udp_socket.clone();
     let client_clone = client_addr.clone();
 
-    tokio::select! {
+    // The client has no clean stop: forwarding runs until the tunnel breaks.
+    // However it ends (connection closed, stream reset or finished by the
+    // server, local UDP error) the tunnel is gone, so it is reported as lost
+    // and a retry wrapper restarts the client.
+    let error = tokio::select! {
         result = forward_udp_to_stream(udp_clone, send_stream, client_clone) => {
-            if let Err(e) = result {
-                log::warn!("UDP to stream error: {}", e);
+            match result {
+                Ok(()) => anyhow::anyhow!("UDP to stream forwarding ended"),
+                Err(e) => e.context("UDP to stream forwarding failed"),
             }
         }
         result = forward_stream_to_udp_client(recv_stream, udp_socket, client_addr) => {
-            if let Err(e) = result {
-                log::warn!("Stream to UDP error: {}", e);
+            match result {
+                Ok(()) => anyhow::anyhow!("Server ended the UDP tunnel stream"),
+                Err(e) => e.context("Stream to UDP forwarding failed"),
             }
         }
-        error = conn.closed() => {
-            log::warn!("QUIC connection closed: {}", error);
-            return Err(TunnelError::connection_lost(
-                anyhow::anyhow!("QUIC connection closed: {}", error)
-            ).into());
-        }
-    }
-
-    conn.close(0u32.into(), b"done");
-    log::info!("UDP client stopped.");
-
-    Ok(())
+        error = conn.closed() => anyhow::anyhow!("QUIC connection closed: {}", error),
+    };
+    log::warn!("UDP tunnel lost: {:#}", error);
+    Err(TunnelError::connection_lost(error).into())
 }
