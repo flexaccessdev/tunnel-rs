@@ -46,11 +46,18 @@ private_key_file = "~/.config/tunnel-rs/client.key"
 # Custom relay server URLs for failover
 # Must match the server's relay configuration: the server may be homed on any of them.
 #
-# At least two relays are required: when the relay the server is homed on stops
-# working, the server moves onto another one from this list without dropping
-# its identity or its connections, so one relay would leave nothing to fail over
-# to. Every relay is probed individually at startup; a relay that does not come
-# online is reported as a warning, and startup fails only if none does.
+# One or more unique relay URLs (a repeated one is ignored). A single relay
+# works in reduced-redundancy mode, with a startup warning and nothing to fail
+# over to. With two or more, when the relay the server is homed on stops
+# working, the server moves onto another one from this list that still works,
+# keeping its identity and its connections on direct paths; a
+# connection whose only path ran through the failed relay times out, and that
+# client exits with code 11 (connection lost), to be restarted by a supervisor
+# or retry wrapper. Every relay is probed individually at startup; a relay
+# that does not come online is reported as a warning. Startup fails when every
+# probe fails, and also when the endpoint does not come online in time even
+# though some passed; the exact rules are in the shared startup probe policy:
+# https://github.com/flexaccessdev/flexaccess-iroh/blob/main/docs/relays-and-address-lookup.md#custom-relay-validation-the-per-relay-startup-probe
 # relay_urls = [
 #     "https://relay1.example.com",
 #     "https://relay2.example.com",

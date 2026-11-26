@@ -63,7 +63,7 @@ iroh discovery server (no relay override).
 
 | Flag | Meaning |
 |------|---------|
-| `--relay-url URL` | Custom relay URL for both sides (**repeatable**; give at least two, a single custom relay is rejected). Custom relays disable internet discovery automatically; clients reach the server through relay hints. Also accepts `--relay-url=URL`. |
+| `--relay-url URL` | Custom relay URL for both sides (**repeatable**; one alone runs in reduced-redundancy mode, with no failover). Custom relays disable internet discovery automatically; clients reach the server through relay hints. Also accepts `--relay-url=URL`. |
 | `--relay-only` | Force all traffic through the relays, disabling direct P2P. Requires `--relay-url`. |
 | `-h`, `--help` | Show help and exit. |
 
@@ -73,8 +73,11 @@ Examples:
 # Default: public relay + iroh discovery server (needs internet), no override
 ./test-scripts/run_e2e.sh
 
-# Custom relays (at least two; internet discovery auto-disabled)
+# Custom relays (internet discovery auto-disabled)
 ./test-scripts/run_e2e.sh --relay-url https://r1.example.com --relay-url https://r2.example.com
+
+# A single custom relay (reduced-redundancy mode)
+./test-scripts/run_e2e.sh --relay-url https://r1.example.com
 
 # Relay-only e2e (no direct P2P; requires custom relays)
 ./test-scripts/run_e2e.sh --relay-url https://r1.example.com --relay-url https://r2.example.com --relay-only
@@ -84,8 +87,8 @@ Exit code is `0` when both TCP and UDP round trips pass, non-zero otherwise.
 
 ### Running local relays for offline relay-only tests
 
-`--relay-only` needs reachable custom relays, and a custom relay set is at
-least two relays. To run fully offline, start two local `iroh-relay` instances
+`--relay-only` needs reachable custom relays. One is enough (reduced-redundancy
+mode); to run fully offline with the redundant setup, start two local `iroh-relay` instances
 in dev mode using the bundled configs (`relay-dev.toml` on port 3340 and
 `relay-dev-2.toml` on port 3341; both disable the metrics server so it won't
 collide with port 9090):
