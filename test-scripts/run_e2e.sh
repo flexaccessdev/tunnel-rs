@@ -49,6 +49,8 @@ READY_TIMEOUT="${READY_TIMEOUT:-60}"
 # ---------------------------------------------------------------------------
 declare -a RELAY_URLS=()
 RELAY_ONLY=0
+RELAY_QAD=""
+RELAY_QAD_SET=0
 
 usage() {
     cat <<'USAGE'
@@ -66,11 +68,26 @@ Options:
                     May also be given as --relay-url=URL.
   --relay-only      Force all traffic through the relays, disabling direct P2P.
                     Requires --relay-url.
+  --relay-quic-addr-discovery BOOL
+                    Whether the custom relays serve QUIC address discovery
+                    (true or false; unset keeps the default, true). The server
+                    and TCP client get it in their config, the UDP client as
+                    the CLI flag. Set false for relays that do not serve it,
+                    such as local dev relays. Requires --relay-url.
   -h, --help        Show this help and exit.
 
 Environment overrides: TUNNEL_RS_BIN, READY_TIMEOUT, KEEP_LOGS, RELAY_URL
 (RELAY_URL is a fallback used only when no --relay-url flag is given).
 USAGE
+}
+
+# Each occurrence of the flag needs true or false: an empty value is an error,
+# as in tunnel-rs itself, and a later valid one does not mask it.
+check_relay_qad() {
+    if [[ "$1" != "true" && "$1" != "false" ]]; then
+        echo "ERROR: --relay-quic-addr-discovery takes true or false (got: '$1')" >&2
+        exit 2
+    fi
 }
 
 while [[ $# -gt 0 ]]; do
@@ -85,6 +102,18 @@ while [[ $# -gt 0 ]]; do
             ;;
         --relay-only)
             RELAY_ONLY=1
+            ;;
+        --relay-quic-addr-discovery)
+            shift
+            [[ $# -gt 0 ]] || { echo "ERROR: --relay-quic-addr-discovery requires a value" >&2; exit 2; }
+            check_relay_qad "$1"
+            RELAY_QAD="$1"
+            RELAY_QAD_SET=1
+            ;;
+        --relay-quic-addr-discovery=*)
+            check_relay_qad "${1#*=}"
+            RELAY_QAD="${1#*=}"
+            RELAY_QAD_SET=1
             ;;
         -h|--help)
             usage
@@ -107,6 +136,24 @@ fi
 if [[ "$RELAY_ONLY" == "1" && ${#RELAY_URLS[@]} -eq 0 ]]; then
     echo "ERROR: --relay-only requires --relay-url" >&2
     exit 2
+fi
+if [[ "$RELAY_QAD_SET" == "1" && ${#RELAY_URLS[@]} -eq 0 ]]; then
+    echo "ERROR: --relay-quic-addr-discovery requires --relay-url" >&2
+    exit 2
+fi
+
+# The runner reads the tunnel processes' logs, so a caller's RUST_LOG keeps
+# only its level directives: a "/regex" message filter would hide the lines
+# waited for (and absorb anything appended after it), and nothing is left of a
+# regex-only filter, so the binary's default applies. flexaccess-iroh's relay
+# module is appended at trace so the QUIC address discovery check sees its
+# line; nothing there logs below info, so this adds no noise.
+RUST_LOG_DIRECTIVES="${RUST_LOG:-}"
+RUST_LOG_DIRECTIVES="${RUST_LOG_DIRECTIVES%%/*}"
+if [[ -n "$RUST_LOG_DIRECTIVES" ]]; then
+    export RUST_LOG="$RUST_LOG_DIRECTIVES,flexaccess_iroh::relay=trace"
+else
+    unset RUST_LOG
 fi
 
 # ---------------------------------------------------------------------------
@@ -162,8 +209,9 @@ start_bg() {
 # never written to the temporary working directory.
 start_tunnel() {
     local role="$1" config="$2" logfile="$3"
+    shift 3
     printf '%s\n' "$config" |
-        setsid "$BIN" "$role" --config-stdin "${RELAY_ONLY_ARGS[@]}" >"$logfile" 2>&1 &
+        setsid "$BIN" "$role" --config-stdin "${RELAY_ONLY_ARGS[@]}" "$@" >"$logfile" 2>&1 &
     PIDS+=("$!")
 }
 
@@ -277,6 +325,22 @@ fi
 log "Server key EndpointId header, stdout default, and 0600 permissions: PASS"
 log "EndpointId: $ENDPOINT_ID"
 
+# The QUIC address discovery setting is for custom relays only: with the
+# default relays it is a config error (exit 2), caught before any network use.
+set +e
+"$BIN" client --relay-quic-addr-discovery false --server-node-id "$ENDPOINT_ID" \
+    --source tcp://127.0.0.1:1 --target 127.0.0.1:1 \
+    --private-key-file "$WORK/client.key" >"$WORK/qad_default_relays.log" 2>&1
+QAD_DEFAULT_STATUS=$?
+set -e
+if [[ "$QAD_DEFAULT_STATUS" -ne 2 ]] ||
+    ! grep -q "requires custom relay_urls" "$WORK/qad_default_relays.log"; then
+    echo "ERROR: --relay-quic-addr-discovery without --relay-url exited $QAD_DEFAULT_STATUS instead of config status 2" >&2
+    cat "$WORK/qad_default_relays.log" >&2 || true
+    exit 1
+fi
+log "QUIC address discovery setting rejected without custom relays: PASS"
+
 # Optional custom-relay configuration and matching --relay-only CLI args
 # (relay_only is CLI-only, not config).
 RELAY_CONFIG="{}"
@@ -287,6 +351,7 @@ if [[ ${#RELAY_URLS[@]} -gt 0 ]]; then
             python3 -c 'import json, sys; urls = [value.decode() for value in sys.stdin.buffer.read().split(b"\0") if value]; print(json.dumps({"relay_urls": urls}))'
     )"
     log "Using custom relays (internet discovery auto-disabled): ${RELAY_URLS[*]}"
+    log "Relay QUIC address discovery: ${RELAY_QAD:-default (true)}"
 else
     log "Using default relay + iroh discovery server (needs internet)"
 fi
@@ -320,8 +385,10 @@ iroh = {
     "allowed_sources": {"tcp": ["127.0.0.0/8"], "udp": ["127.0.0.0/8"]},
 }
 iroh.update(json.loads(sys.stdin.readline()))
+if sys.argv[2]:
+    iroh["relay_quic_addr_discovery"] = sys.argv[2] == "true"
 print(json.dumps({"role": "server", "iroh": iroh}))
-' "$AUTHORIZED_ENTRY"
+' "$AUTHORIZED_ENTRY" "$RELAY_QAD"
 )"
 
 log "Starting tunnel-rs server..."
@@ -338,6 +405,10 @@ build_client_config() {
     # "inline" embeds the key file's contents as 'private_key' instead of
     # pointing at it; any other value keeps the file-based form.
     local key_mode="${5:-file}"
+    # "config" puts the QUIC address discovery setting in the config; any
+    # other value leaves it to the command line.
+    local qad_mode="${6:-config}" qad=""
+    [[ "$qad_mode" == "config" ]] && qad="$RELAY_QAD"
     printf '%s\n%s\n' "$ENDPOINT_ID" "$RELAY_CONFIG" |
         python3 -c '
 import json, sys
@@ -354,8 +425,10 @@ if sys.argv[5] == "inline":
 else:
     iroh["private_key_file"] = sys.argv[4]
 iroh.update(json.loads(sys.stdin.readline()))
+if sys.argv[6]:
+    iroh["relay_quic_addr_discovery"] = sys.argv[6] == "true"
 print(json.dumps({"role": "client", "iroh": iroh}))
-' "$protocol" "$backend_port" "$target_port" "$private_key_file" "$key_mode"
+' "$protocol" "$backend_port" "$target_port" "$private_key_file" "$key_mode" "$qad"
 }
 
 UNAUTHORIZED_CONFIG="$(build_client_config tcp "$TCP_BACKEND" "$TCP_TARGET" "$WORK/unauthorized.key")"
@@ -390,19 +463,41 @@ fi
 log "Unlisted authentication key rejection: PASS"
 
 CLIENT_TCP_CONFIG="$(build_client_config tcp "$TCP_BACKEND" "$TCP_TARGET")"
-# The UDP client takes the same key inline, exercising the stdin-only form.
-CLIENT_UDP_CONFIG="$(build_client_config udp "$UDP_BACKEND" "$UDP_TARGET" "$WORK/client.key" inline)"
+# The UDP client takes the same key inline, exercising the stdin-only form,
+# and the QUIC address discovery setting as the CLI flag rather than config.
+CLIENT_UDP_CONFIG="$(build_client_config udp "$UDP_BACKEND" "$UDP_TARGET" "$WORK/client.key" inline cli)"
+declare -a UDP_CLIENT_ARGS=()
+[[ -n "$RELAY_QAD" ]] && UDP_CLIENT_ARGS+=(--relay-quic-addr-discovery "$RELAY_QAD")
 
 log "Starting tunnel-rs TCP client..."
 start_tunnel client "$CLIENT_TCP_CONFIG" "$WORK/client_tcp.log"
 log "Starting tunnel-rs UDP client..."
-start_tunnel client "$CLIENT_UDP_CONFIG" "$WORK/client_udp.log"
+start_tunnel client "$CLIENT_UDP_CONFIG" "$WORK/client_udp.log" "${UDP_CLIENT_ARGS[@]}"
 unset CLIENT_TCP_CONFIG CLIENT_UDP_CONFIG RELAY_CONFIG SECRET
 
 wait_for_log "$WORK/client_tcp.log" "Listening on TCP" "$READY_TIMEOUT"
 wait_for_log "$WORK/client_udp.log" "Listening on UDP" "$READY_TIMEOUT"
 wait_for_log_count "$WORK/server.log" \
     "Client [0-9a-f]+ authenticated successfully as e2e client" 2 "$READY_TIMEOUT"
+
+# Each endpoint logs QUIC address discovery as off exactly when it was set
+# false, whether from config (server, TCP client) or the CLI (UDP client).
+if [[ ${#RELAY_URLS[@]} -gt 0 ]]; then
+    QAD_OFF_LINE="QUIC address discovery is off for the custom relays"
+    for endpoint_log in server client_tcp client_udp; do
+        if [[ "$RELAY_QAD" == "false" ]]; then
+            grep -q "$QAD_OFF_LINE" "$WORK/$endpoint_log.log" || {
+                echo "ERROR: $endpoint_log did not turn QUIC address discovery off" >&2
+                cat "$WORK/$endpoint_log.log" >&2 || true
+                exit 1
+            }
+        elif grep -q "$QAD_OFF_LINE" "$WORK/$endpoint_log.log"; then
+            echo "ERROR: $endpoint_log turned QUIC address discovery off unasked" >&2
+            exit 1
+        fi
+    done
+    log "Relay QUIC address discovery ${RELAY_QAD:-default} on every endpoint: PASS"
+fi
 
 # ---------------------------------------------------------------------------
 # Run the echo test clients through the tunnel

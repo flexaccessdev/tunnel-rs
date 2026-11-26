@@ -22,7 +22,9 @@ authentication keys, uses Python's `json` module to serialize the runtime
 configurations, and pipes each configuration directly to `--config-stdin`.
 It checks the versioned private-key format, public-key comment, and `0600`
 permissions, and verifies that an unlisted key is rejected with the
-authentication exit code. Authentication key files live only in the
+authentication exit code. It also checks that the relay QUIC address
+discovery setting is a config error (exit `2`) without custom relays.
+Authentication key files live only in the
 automatically removed temporary working directory.
 
 This suite covers what tunnel-rs adds on top of the shared iroh layer: the
@@ -65,6 +67,7 @@ iroh discovery server (no relay override).
 |------|---------|
 | `--relay-url URL` | Custom relay URL for both sides (**repeatable**; one alone runs in reduced-redundancy mode, with no failover). Custom relays disable internet discovery automatically; clients reach the server through relay hints. Also accepts `--relay-url=URL`. |
 | `--relay-only` | Force all traffic through the relays, disabling direct P2P. Requires `--relay-url`. |
+| `--relay-quic-addr-discovery BOOL` | Whether the custom relays serve QUIC address discovery (`true`/`false`; unset keeps the default, `true`). The server and TCP client get it in their config, the UDP client as the CLI flag, and the script checks each endpoint applied it. Set `false` for relays that do not serve it, such as the local dev relays below: left on, each endpoint waits out iroh's 3 s probe timeout. Requires `--relay-url`. |
 | `-h`, `--help` | Show help and exit. |
 
 Examples:
@@ -102,6 +105,10 @@ iroh-relay --dev -c test-scripts/relay-dev-2.toml
 
 # terminal 3: relay-only e2e against them
 ./test-scripts/run_e2e.sh --relay-url http://localhost:3340 --relay-url http://localhost:3341 --relay-only
+
+# direct mode against them; dev relays serve no QUIC address discovery
+./test-scripts/run_e2e.sh --relay-url http://localhost:3340 --relay-url http://localhost:3341 \
+    --relay-quic-addr-discovery false
 ```
 
 Install the relay with `cargo install iroh-relay --features server` if you

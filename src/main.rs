@@ -85,6 +85,13 @@ enum Command {
         #[arg(long, value_name = "TOKEN")]
         relay_auth_token: Option<String>,
 
+        /// Whether the custom relays serve QUIC address discovery, all or none
+        /// (default: true; requires --relay-url). Set false for relays behind a
+        /// Cloudflare Tunnel or another HTTP-only front, which otherwise delay
+        /// startup by up to 3 s.
+        #[arg(long, value_name = "BOOL")]
+        relay_quic_addr_discovery: Option<bool>,
+
         /// Force all connections through the relay servers (disables direct P2P).
         #[arg(long)]
         relay_only: bool,
@@ -130,6 +137,13 @@ enum Command {
         /// Prefer TUNNEL_RS_RELAY_AUTH_TOKEN or config to keep it out of the process list.
         #[arg(long, value_name = "TOKEN")]
         relay_auth_token: Option<String>,
+
+        /// Whether the custom relays serve QUIC address discovery, all or none
+        /// (default: true; requires --relay-url). Set false for relays behind a
+        /// Cloudflare Tunnel or another HTTP-only front, which otherwise delay
+        /// startup by up to 3 s.
+        #[arg(long, value_name = "BOOL")]
+        relay_quic_addr_discovery: Option<bool>,
 
         /// Force all connections through the relay servers (disables direct P2P).
         #[arg(long)]
@@ -240,6 +254,7 @@ struct ServerIrohParams {
     secret_file: Option<PathBuf>,
     relay_urls: Vec<String>,
     relay_auth_token: Option<String>,
+    relay_quic_addr_discovery: Option<bool>,
     authorized_keys: Option<AuthorizedKeysSource>,
     transport: TransportTuning,
 }
@@ -260,6 +275,7 @@ fn resolve_server_iroh_params(
         secret_file,
         relay_urls,
         relay_auth_token,
+        relay_quic_addr_discovery,
         authorized_keys_file,
         ..
     } = cli
@@ -297,6 +313,7 @@ fn resolve_server_iroh_params(
             .clone()
             .or_else(|| env_var_opt("TUNNEL_RS_RELAY_AUTH_TOKEN"))
             .or(cfg.relay_auth_token.clone()),
+        relay_quic_addr_discovery: relay_quic_addr_discovery.or(cfg.relay_quic_addr_discovery),
         authorized_keys: authorized_keys_file
             .clone()
             .or_else(|| env_var_opt("TUNNEL_RS_AUTHORIZED_KEYS_FILE").map(PathBuf::from))
@@ -315,6 +332,7 @@ struct ClientIrohParams {
     target: Option<String>,
     relay_urls: Vec<String>,
     relay_auth_token: Option<String>,
+    relay_quic_addr_discovery: Option<bool>,
     private_key: Option<PrivateKeySource>,
     transport: TransportTuning,
 }
@@ -333,6 +351,7 @@ fn resolve_client_iroh_params(
         target,
         relay_urls,
         relay_auth_token,
+        relay_quic_addr_discovery,
         private_key_file,
         ..
     } = cli
@@ -354,6 +373,7 @@ fn resolve_client_iroh_params(
             .clone()
             .or_else(|| env_var_opt("TUNNEL_RS_RELAY_AUTH_TOKEN"))
             .or(cfg.relay_auth_token.clone()),
+        relay_quic_addr_discovery: relay_quic_addr_discovery.or(cfg.relay_quic_addr_discovery),
         private_key: private_key_file
             .clone()
             .or_else(|| env_var_opt("TUNNEL_RS_PRIVATE_KEY_FILE").map(PathBuf::from))
@@ -361,6 +381,22 @@ fn resolve_client_iroh_params(
             .map(PrivateKeySource::File)
             .or_else(|| cfg.private_key.clone().map(PrivateKeySource::Inline)),
         transport: cfg.transport.clone(),
+    }
+}
+
+/// The relay configuration from the resolved relay parameters. QUIC address
+/// discovery keeps the library's default unless set, since setting it at all
+/// requires custom relays.
+fn build_relay_config(
+    relay_urls: &[String],
+    relay_auth_token: Option<String>,
+    relay_quic_addr_discovery: Option<bool>,
+) -> Result<RelayConfig> {
+    let config =
+        RelayConfig::from_urls_with_token(relay_urls, relay_auth_token).map_err(TunnelError::config)?;
+    match relay_quic_addr_discovery {
+        Some(enabled) => Ok(config.with_quic_addr_discovery(enabled).map_err(TunnelError::config)?),
+        None => Ok(config),
     }
 }
 
@@ -505,11 +541,12 @@ async fn run_inner() -> Result<()> {
                 secret_file,
                 relay_urls,
                 relay_auth_token,
+                relay_quic_addr_discovery,
                 authorized_keys,
                 transport,
             } = resolve_server_iroh_params(&command, cfg.iroh());
-            let relay_config = RelayConfig::from_urls_with_token(&relay_urls, relay_auth_token)
-                .map_err(TunnelError::config)?;
+            let relay_config =
+                build_relay_config(&relay_urls, relay_auth_token, relay_quic_addr_discovery)?;
             let secret = resolve_iroh_secret(secret, secret_file)?;
             let authorized_keys = authorized_keys.ok_or_else(|| {
                 TunnelError::config(anyhow::anyhow!(
@@ -554,11 +591,12 @@ async fn run_inner() -> Result<()> {
                 target,
                 relay_urls,
                 relay_auth_token,
+                relay_quic_addr_discovery,
                 private_key,
                 transport,
             } = resolve_client_iroh_params(&command, cfg.iroh());
-            let relay_config = RelayConfig::from_urls_with_token(&relay_urls, relay_auth_token)
-                .map_err(TunnelError::config)?;
+            let relay_config =
+                build_relay_config(&relay_urls, relay_auth_token, relay_quic_addr_discovery)?;
             let server_node_id = server_node_id.ok_or_else(|| TunnelError::config(
                 anyhow::anyhow!("server_node_id is required. Provide via --server-node-id or in config file."),
             ))?;
@@ -606,5 +644,52 @@ async fn run_inner() -> Result<()> {
         Command::ShowServerId { secret_file, json } => {
             secret::show_id(&expand_tilde(secret_file), *json)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const RELAY: &str = "https://relay.example.com./";
+
+    fn client_args(extra: &[&str]) -> Command {
+        let mut argv = vec!["tunnel-rs", "client", "--relay-url", RELAY];
+        argv.extend_from_slice(extra);
+        Args::parse_from(argv).command
+    }
+
+    #[test]
+    fn relay_quic_addr_discovery_defaults_to_on() {
+        let config = build_relay_config(&[RELAY.into()], None, None).unwrap();
+        assert_eq!(config.quic_addr_discovery(), Some(true));
+    }
+
+    #[test]
+    fn relay_quic_addr_discovery_can_be_turned_off() {
+        let config = build_relay_config(&[RELAY.into()], None, Some(false)).unwrap();
+        assert_eq!(config.quic_addr_discovery(), Some(false));
+    }
+
+    #[test]
+    fn relay_quic_addr_discovery_requires_custom_relays() {
+        assert!(build_relay_config(&[], None, Some(false)).is_err());
+        assert!(build_relay_config(&[], None, None).is_ok());
+    }
+
+    #[test]
+    fn relay_quic_addr_discovery_cli_overrides_config() {
+        let cfg: crate::config::IrohConfig =
+            toml::from_str("relay_quic_addr_discovery = false").unwrap();
+
+        let params = resolve_client_iroh_params(&client_args(&[]), Some(&cfg));
+        assert_eq!(params.relay_quic_addr_discovery, Some(false));
+
+        let cli = client_args(&["--relay-quic-addr-discovery", "true"]);
+        let params = resolve_client_iroh_params(&cli, Some(&cfg));
+        assert_eq!(params.relay_quic_addr_discovery, Some(true));
+
+        let params = resolve_client_iroh_params(&client_args(&[]), None);
+        assert_eq!(params.relay_quic_addr_discovery, None);
     }
 }

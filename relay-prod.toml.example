@@ -54,3 +54,10 @@ enable_metrics = false
 # process list), `relay_auth_token` in the config, or --relay-auth-token.
 # Do not put it on the relay URL as `?token=...`: iroh drops a relay URL's
 # query when it dials, so the relay would never see the token.
+
+# --- QUIC address discovery on the tunnel-rs side ---
+# This relay serves no QUIC address discovery (see above), so turn it off in
+# tunnel-rs for these relays, on both the server and the client:
+# `relay_quic_addr_discovery = false` in the config, or
+# --relay-quic-addr-discovery false. Left on, iroh probes the relay for it and
+# each tunnel-rs start can wait out its 3 s probe timeout.
