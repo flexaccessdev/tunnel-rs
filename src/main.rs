@@ -384,22 +384,6 @@ fn resolve_client_iroh_params(
     }
 }
 
-/// The relay configuration from the resolved relay parameters. QUIC address
-/// discovery keeps the library's default unless set, since setting it at all
-/// requires custom relays.
-fn build_relay_config(
-    relay_urls: &[String],
-    relay_auth_token: Option<String>,
-    relay_quic_addr_discovery: Option<bool>,
-) -> Result<RelayConfig> {
-    let config =
-        RelayConfig::from_urls_with_token(relay_urls, relay_auth_token).map_err(TunnelError::config)?;
-    match relay_quic_addr_discovery {
-        Some(enabled) => Ok(config.with_quic_addr_discovery(enabled).map_err(TunnelError::config)?),
-        None => Ok(config),
-    }
-}
-
 fn resolve_iroh_secret(secret: Option<String>, secret_file: Option<PathBuf>) -> Result<SecretKey> {
     match (secret, secret_file) {
         (Some(_), Some(_)) => {
@@ -546,7 +530,8 @@ async fn run_inner() -> Result<()> {
                 transport,
             } = resolve_server_iroh_params(&command, cfg.iroh());
             let relay_config =
-                build_relay_config(&relay_urls, relay_auth_token, relay_quic_addr_discovery)?;
+                RelayConfig::from_settings(&relay_urls, relay_auth_token, relay_quic_addr_discovery)
+                    .map_err(TunnelError::config)?;
             let secret = resolve_iroh_secret(secret, secret_file)?;
             let authorized_keys = authorized_keys.ok_or_else(|| {
                 TunnelError::config(anyhow::anyhow!(
@@ -596,7 +581,8 @@ async fn run_inner() -> Result<()> {
                 transport,
             } = resolve_client_iroh_params(&command, cfg.iroh());
             let relay_config =
-                build_relay_config(&relay_urls, relay_auth_token, relay_quic_addr_discovery)?;
+                RelayConfig::from_settings(&relay_urls, relay_auth_token, relay_quic_addr_discovery)
+                    .map_err(TunnelError::config)?;
             let server_node_id = server_node_id.ok_or_else(|| TunnelError::config(
                 anyhow::anyhow!("server_node_id is required. Provide via --server-node-id or in config file."),
             ))?;
@@ -657,24 +643,6 @@ mod tests {
         let mut argv = vec!["tunnel-rs", "client", "--relay-url", RELAY];
         argv.extend_from_slice(extra);
         Args::parse_from(argv).command
-    }
-
-    #[test]
-    fn relay_quic_addr_discovery_defaults_to_on() {
-        let config = build_relay_config(&[RELAY.into()], None, None).unwrap();
-        assert_eq!(config.quic_addr_discovery(), Some(true));
-    }
-
-    #[test]
-    fn relay_quic_addr_discovery_can_be_turned_off() {
-        let config = build_relay_config(&[RELAY.into()], None, Some(false)).unwrap();
-        assert_eq!(config.quic_addr_discovery(), Some(false));
-    }
-
-    #[test]
-    fn relay_quic_addr_discovery_requires_custom_relays() {
-        assert!(build_relay_config(&[], None, Some(false)).is_err());
-        assert!(build_relay_config(&[], None, None).is_ok());
     }
 
     #[test]
